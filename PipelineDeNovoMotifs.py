@@ -47,7 +47,7 @@ import shutil
 import glob
 import xml.etree.ElementTree
 import random
-from itertools import izip, product
+from itertools import izip
 import math
 
 import pandas
@@ -62,34 +62,11 @@ import CGAT.IOTools as IOTools
 import CGAT.Bed as Bed
 import CGAT.Bioprospector as Bioprospector
 import CGAT.FastaIterator as FastaIterator
-from CGAT.MEME import MemeMotif, MemeMotifFile, MotifCluster, MotifList
+from CGAT.MEME import MemeMotifFile, MotifCluster
 from CGAT.FastaIterator import FastaRecord
 
 # Set from importing module
 PARAMS = {}
-
-
-def filterMotifsFromMEME(infile, outfile, selected):
-    '''select motifs from a MEME file and save into outfile
-    '''
-
-    outs = open(outfile, "w")
-    if len(selected) == 0:
-        outs.close()
-        return
-
-    keep = True
-
-    for line in open(infile, "r"):
-        if line.startswith("MOTIF"):
-            motif = re.match("MOTIF\s+(\d+)", line).groups()[0]
-            if motif in selected:
-                keep = True
-            else:
-                keep = False
-        if keep:
-            outs.write(line)
-    outs.close()
 
 
 def maskSequences(sequences, masker=None):
@@ -410,181 +387,9 @@ def writeSequencesForIntervals(track,
     return c.output
 
 
-def runRegexMotifSearch(infiles, outfile):
-    '''run a regular expression search on sequences.
-    compute counts.
-    '''
-
-    motif = "[AG]G[GT]T[CG]A"
-    reverse_motif = "T[GC]A[CA]C[TC]"
-
-    controlfile, dbfile = infiles
-    if not os.path.exists(controlfile):
-        raise ValueError(
-            "control file %s for %s does not exist" % (controlfile, dbfile))
-
-    motifs = []
-    for x in range(0, 15):
-        motifs.append(
-            ("DR%i" % x, re.compile(motif + "." * x + motif, re.IGNORECASE)))
-    for x in range(0, 15):
-        motifs.append(
-            ("ER%i" % x, re.compile(motif + "." * x + reverse_motif, re.IGNORECASE)))
-
-    db_positions = Motifs.countMotifs(IOTools.openFile(dbfile, "r"), motifs)
-    control_positions = Motifs.countMotifs(
-        IOTools.openFile(controlfile, "r"), motifs)
-
-    db_counts, control_counts = Motifs.getCounts(
-        db_positions), Motifs.getCounts(control_positions)
-    db_seqcounts, control_seqcounts = Motifs.getOccurances(
-        db_positions), Motifs.getCounts(control_positions)
-
-    ndb, ncontrol = len(db_positions), len(control_positions)
-    outf = IOTools.openFile(outfile, "w")
-    outf.write(
-        "motif\tmotifs_db\tmotifs_control\tseq_db\tseq_db_percent\tseq_control\tseq_control_percent\tfold\n")
-    for motif, pattern in motifs:
-        try:
-            fold = float(db_seqcounts[motif]) * \
-                ncontrol / (ndb * control_seqcounts[motif])
-        except ZeroDivisionError:
-            fold = 0
-
-        outf.write("%s\t%i\t%i\t%i\t%s\t%i\t%s\t%5.2f\n" %
-                   (motif,
-                    db_counts[motif],
-                    control_counts[motif],
-                    db_seqcounts[motif],
-                    IOTools.prettyPercent(db_seqcounts[motif], ndb),
-                    control_seqcounts[motif],
-                    IOTools.prettyPercent(control_seqcounts[motif], ncontrol),
-                    fold))
-
-
 ############################################################
 ############################################################
 ############################################################
-def runGLAM2SCAN(infiles, outfile):
-    '''run glam2scan on all intervals and motifs.
-    '''
-
-    # only use new nodes, as /bin/csh is not installed
-    # on the old ones.
-    # job_options = "-l mem_free=8000M"
-
-    controlfile, dbfile, motiffiles = infiles
-    controlfile = dbfile[:-len(".fasta")] + ".controlfasta"
-    if not os.path.exists(controlfile):
-        raise ValueError(
-            "control file %s for %s does not exist" % (controlfile, dbfile))
-
-    if os.path.exists(outfile):
-        os.remove(outfile)
-
-    for motiffile in motiffiles:
-        of = IOTools.openFile(outfile, "a")
-        motif, x = os.path.splitext(motiffile)
-        of.write(":: motif = %s ::\n" % motif)
-        of.close()
-
-        statement = '''
-        cat %(dbfile)s %(controlfile)s
-        | %(execglam2scan)s -2 -n %(glam2scan_results)i n %(motiffile)s - >> %(outfile)s
-        '''
-        P.run()
-
-
-def loadGLAM2SCAN(infile, outfile):
-    '''parse mast file and load into database.
-
-    Parse several motif runs and add them to the same
-    table.
-    '''
-    tmpfile = tempfile.NamedTemporaryFile(delete=False)
-    tmpfile.write(
-        "motif\tid\tnmatches\tscore\tscores\tncontrols\tmax_controls\n")
-
-    lines = IOTools.openFile(infile).readlines()
-    chunks = [x for x in range(len(lines)) if lines[x].startswith("::")]
-    chunks.append(len(lines))
-
-    for chunk in range(len(chunks) - 1):
-
-        # use real file, as parser can not deal with a
-        # list of lines
-
-        try:
-            motif = re.match(
-                ":: motif = (\S+) ::", lines[chunks[chunk]]).groups()[0]
-        except AttributeError:
-            raise ValueError(
-                "parsing error in line '%s'" % lines[chunks[chunk]])
-
-        if chunks[chunk] + 1 == chunks[chunk + 1]:
-            L.warn("no results for motif %s - ignored" % motif)
-            continue
-
-        tmpfile2 = tempfile.NamedTemporaryFile(delete=False)
-        tmpfile2.write("".join(lines[chunks[chunk] + 1:chunks[chunk + 1]]))
-        tmpfile2.close()
-        glam = Glam2Scan.parse(IOTools.openFile(tmpfile2.name, "r"))
-
-        os.unlink(tmpfile2.name)
-
-        # collect control data
-        full_matches = collections.defaultdict(list)
-        controls = collections.defaultdict(list)
-        for match in glam.matches:
-            m = match.id.split("_")
-            track, id = m[:2]
-            if len(m) == 2:
-                full_matches[id].append(match)
-            else:
-                controls[id].append(match.score)
-
-        for id, matches in full_matches.iteritems():
-
-            nmatches = len(matches)
-            scores = [x.score for x in matches]
-            score = max(scores)
-            # move to genomic coordinates
-            # contig, start, end = re.match( "(\S+):(\d+)..(\d+)", match.id).groups()
-            # start, end = int(start), int(end)
-            # match.start += start
-            # match.end += start
-            contig = ""
-
-            if id not in controls:
-                P.warn("no controls for %s - increase evalue?" % id)
-
-            c = controls[id]
-            if len(c) == 0:
-                mmax = ""
-            else:
-                mmax = max(c)
-
-            tmpfile.write("\t".join(map(str,
-                                        (motif, id,
-                                         nmatches,
-                                         score,
-                                         ",".join(map(str, scores)),
-                                         len(c),
-                                         mmax))) + "\n")
-
-    tmpfile.close()
-
-    P.load(tmpfile.name,
-           outfile,
-           options="--add-index=id "
-           "--add-index=motif "
-           "--add-index=id,motif "
-           "--allow-empty-file "
-           "--map=base_qualities:text")
-
-    os.unlink(tmpfile.name)
-
-
 def loadMAST(infile, outfile):
     '''parse mast file and load into database.
 
