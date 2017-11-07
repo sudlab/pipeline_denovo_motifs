@@ -175,7 +175,7 @@ import CGAT.Experiment as E
 import CGATPipelines.Pipeline as P
 import CGAT.IOTools as IOTools
 import CGAT.Bed as Bed
-import PipelinePeakcalling as PipelinePeakcalling
+import CGATPipelines.PipelinePeakcalling as PipelinePeakcalling
 import PipelineDeNovoMotifs as PipelineMotifs
 import CGATPipelines.PipelineTracks as PipelineTracks
 
