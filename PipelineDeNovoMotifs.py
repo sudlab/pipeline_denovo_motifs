@@ -345,6 +345,12 @@ def writeSequencesForIntervals(track,
 
     fasta = IndexedFasta.IndexedFasta(
         os.path.join(PARAMS["genome_dir"], PARAMS["genome"]))
+   
+    # At the moment the pipeline retrieves from the DB the bed regions and they will
+    # always be in the positive strand but if this were to change. The regions retrieved from 
+    # the negative strand will be counted from the end of the chromosome and not the beginning without this.
+    # This should be tested.
+    fasta.setConverter(IndexedFasta.getConverter("zero-one-open"))
 
     # modify the ranges
     if shift == "leftright":
