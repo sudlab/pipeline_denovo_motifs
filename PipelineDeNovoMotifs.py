@@ -350,7 +350,7 @@ def writeSequencesForIntervals(track,
     # always be in the positive strand but if this were to change. The regions retrieved from 
     # the negative strand will be counted from the end of the chromosome and not the beginning without this.
     # This should be tested.
-    fasta.setConverter(IndexedFasta.getConverter("zero-one-open"))
+    fasta.setConverter(IndexedFasta.getConverter("zero-single-open"))
 
     # modify the ranges
     if shift == "leftright":
