@@ -64,6 +64,7 @@ import CGAT.Bioprospector as Bioprospector
 import CGAT.FastaIterator as FastaIterator
 from CGAT.MEME import MemeMotifFile, MotifCluster
 from CGAT.FastaIterator import FastaRecord
+import pandas as pd
 
 # Set from importing module
 PARAMS = {}
@@ -1250,3 +1251,37 @@ def tomtom_comparison(track1, track2, outfile):
                      %(track2)s  2> %(outfile)s.log 
                  | sed 's/#//' > %(outfile)s '''
     P.run()
+
+
+def add_motif_enrichment_to_tomtom(seed_result, tomtom_result, outfile):
+
+    seed_results = MemeMotifFile(IOTools.openFile(seed_result))
+
+    tomtom_result_df = pd.read_table(tomtom_result,
+                                       header=0,
+                                       delimiter="\t")
+
+    # Create a dataframe with the seeds and their corresponding motif enrichment E-value
+    seed_results_df = pandas.DataFrame(columns=['#Query ID', 'Enrichment E-value'])
+
+    for seed in seed_results.motifs:
+
+        # Create a series of key and enrichment E-value
+        seed_series = pd.Series([seed.primary_id, seed.evalue], index=['#Query ID', 'Enrichment E-value'])
+
+        seed_results_df = seed_results_df.append(seed_series, ignore_index=True)
+
+    # Merge the tables only when common keys are found
+    merged_df = tomtom_result_df.merge(seed_results_df, on="#Query ID", how="inner")
+
+
+    # Output the table
+    merged_df.to_csv(outfile,
+                     sep="\t",
+                     header=True,
+                     mode="w",
+                     index_label=None,
+                     index=False, na_rep="NA",
+                     line_terminator="\n")
+
+

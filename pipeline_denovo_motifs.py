@@ -1125,6 +1125,30 @@ def loadTomTom(infile, outfile):
 
 
 ############################################################
+@follows(runTomTom)
+@transform([getMemeSeeds,
+            getDiscMemeSeeds,
+            getRandDremeSeeds,
+            getDiscDremeSeeds],
+           formatter("(?P<SAMPLE>.+)\.seeds"),
+           add_inputs("{SAMPLE[0]}.tomtom"),
+           "{SAMPLE[0]}_w_motif_enrichment.tomtom")
+def outputTomTomWithMotifEnrichment(infiles, outfile):
+    '''Original motif enrichment is not outputted in runTomTom output.
+    This adds this data'''
+    seed_result = infiles[0]
+
+    tomtom_result = infiles[1]
+
+    # Get the list of seed motifs
+    PipelineMotifs.add_motif_enrichment_to_tomtom(seed_result,
+                                                  tomtom_result,
+                                                  outfile)
+
+
+
+
+############################################################
 @follows(meme,
          discMeme,
          randDreme,
