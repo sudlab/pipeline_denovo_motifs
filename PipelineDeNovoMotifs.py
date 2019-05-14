@@ -877,6 +877,25 @@ def runMEMEOnSequences(infile, outfile, background=None,
         E.warn("%s: less than 2 sequences - meme skipped" % outfile)
         P.touch(outfile)
         return
+
+    # Get the total length of the sequences to decide the memory
+    total_seqs_length = 0
+
+    with IOTools.openFile(infile, "r") as fasta_reader:
+
+        iterator_fasta = FastaIterator.iterate(fasta_reader)
+
+        for fasta_seq in iterator_fasta:
+            total_seqs_length += len(fasta_seq.sequence)
+
+    fasta_reader.close()
+
+    # If the length of all sequences is higher than 160,000bp
+    # Up the memory
+    job_memory = "2G"
+
+    if (total_seqs_length > 160000):
+        job_memory = "4G"
     
     if PARAMS.get("meme_revcomp", True):
         revcomp = "-revcomp"
