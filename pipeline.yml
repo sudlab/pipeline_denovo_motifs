@@ -1,0 +1,380 @@
+##########################################################
+##########################################################
+##########################################################
+## Default configuration file for intervals pipeline
+##########################################################
+
+# directory where input data are located, specified as:
+# "." for the current directory
+# alternative a path may be specified. The convention is to
+# use 'data.dir'
+# The default is '.'
+input: .
+
+# location of indexed genome 
+genome: hg38_noalt
+
+# location of indexed genome 
+genome_dir: /shared/sudlab1/General/mirror/genomes/index
+
+
+
+
+
+
+# scratchdir for data not to be backed up
+scratchdir: /tmp
+
+# a version string
+version: ''
+
+# directory for publishing results on the web
+web_dir: ../web
+
+# directory in which to save files for export
+exportdir: export
+
+# wether or not to preprocess the intervals
+# preprocessing involves:
+# * sorting the intervals
+# * merging overlapping intervals
+# * renaming intervals
+# * removing strand and score information
+preprocess: 0
+
+
+##methods for motif finding
+# currently supported are 
+#
+# MEME
+# discMEME - discriminative MEME
+# randDREME - DREME with ranomdised background
+# discDREME - discriminative DREME
+# descriminative methods require a design file (design.tsv) matching test 
+# sets to negatives
+# The design file must have a tab separated header
+methods: meme, randDREME
+
+###############################################################
+
+
+database:
+    url: sqlite:///.csvdb
+
+
+    ################################################################
+    ################################################################
+    ################################################################
+    ## track information
+    ################################################################
+bams:
+
+offsets:
+
+
+    ################################################################
+    ################################################################
+    ################################################################
+    ## Location of annotation database
+    ################################################################
+annotations:
+    database: /shared/sudlab1/General/annotations/hg38_noalt_ensembl85/csvdb
+
+    # directory with annotation information
+    dir: /shared/sudlab1/General/annotations/hg38_noalt_ensembl85
+
+    #######################################################
+    #######################################################
+    #######################################################
+    ## Parameters for computing peak shapes
+    #######################################################
+peakshape:
+    # window width for computing peakshape
+    window_size: 1000
+
+    # bin size for computing peak shapes
+    bin_size: 10
+
+    #######################################################
+    #######################################################
+    #######################################################
+    ## options related to motif search
+    #######################################################
+    #
+    #Each tool gets a seperate section with common options
+    #for selecting the sequence used to find motifs.
+    #
+    # these are:
+    #
+    # max_size:
+    # maximum of the sum of lengths of sequences used for motif
+    # searches. 
+    #
+    # halfwidth:
+    # half width of region around peak to use for motif discovery
+    # leave unset to use whole interval
+    #
+    # masker:
+    # masker to use for meme, valid options are 'dustmasker' and 'repeatmasker'
+    # (the latter requires an appropriately annotated genome.fasta file)
+    #
+    # score:
+    # order of peaks to use, one of "peakval", "score" or "random".
+    #
+    #    score: use the score field of the bed files, higher is better
+    #    peakval: use a peakval score calculated from from associated bamfiles
+    #    random: randomise the order of intervals
+    #
+    # if an option is specificed but data (or bam files) absent, a score of
+    # 1 is set for all peaks.
+    #
+    # Then a set of options to decide how many peaks to use:
+    # Set either proportation (0 < proportion <= 1) and min sequences or 
+    # num_sequences.
+    #
+    # the maximum of proportion and min_sequences
+    # will be used to detect motifs
+    # 
+
+    #########################################################
+    # MEME
+    #########################################################
+
+meme:
+    ### Sequence file generation
+    ## Selecting sequences
+    #ranking (score, peakval or random)
+    score: random
+
+    # number of sequences to use
+    num_sequences: ''
+    # or
+    proportion: 1
+    min_sequences: 100
+
+    ## Sequence manipulations
+    halfwidth: ''
+    masker: ''
+
+    # meme model to use
+    model: anr
+
+    # maximum number of characters for motif discovery
+    max_size: 200000000
+
+    # number of motifs to find with meme
+    nmotifs: 40
+
+    # Threads to use
+    # If the threads used are >1, additional options can be specified
+    # In Iceberg, the following specifications for job and cluster parallel 
+    # environments should be specified:
+    # job_options=-l excl=false -w n
+    # cluster_parallel_environment=openmpi-ib
+    threads: 25
+
+    # Options used if threads >1
+    job_options: -l excl=false -w n
+    cluster_parallel_environment: openmpi-ib
+
+
+
+    # meme_options
+    options: -minw 5 -maxw 30
+
+
+psp:
+    options: ''
+
+    ############################################################
+    # DREME
+    ############################################################
+
+dreme:
+    ### Sequence file generation
+
+    ## Selecting sequences
+    #ranking (score, peakval or random)
+    score: peakval
+
+    # number of sequences to use
+    num_sequences: ''
+    # or
+    proportion: 1
+    min_sequences: 100
+
+    ## Sequence manipulations
+    max_size: ''
+    halfwidth: ''
+    masker: dustmasker
+
+    # dreme_options
+    options: -minw 5 -maxw 30
+
+    ############################################################
+    # MEME-ChIP
+    ############################################################
+memechip:
+    ### Sequence file generation
+
+    ## Selecting sequences
+    #ranking (score, peakval or random)
+    score: peakval
+
+    # number of sequences to use
+    num_sequences: ''
+    # or
+    proportion: 1
+    min_sequences: 100
+
+    ## Sequence manipulations
+    max_size: ''
+    halfwidth: 100
+    masker: dustmasker
+
+    #number of sequences to pass to MEME
+    nmeme: 100
+
+
+    # Threads to use
+    # If the threads used are >1, additional options can be specified
+    # In Iceberg, the following specifications for job and cluster parallel
+    # environments should be specified:
+    # job_options=-l excl=false -w n
+    # cluster_parallel_environment=openmpi-ib
+    threads: 1
+
+    # Options used if threads >1
+    job_options: -l excl=false -w n
+    cluster_parallel_environment: openmpi-ib
+
+
+    options: -meme-minw 5 -meme-maxw 30 -meme-nmotifs=3
+
+    #############################################################
+    # Biprospector
+    #############################################################
+
+bioprospector:
+    #bioprospector options
+    options: -W 6 -w 6 -g 3 -G 3
+
+    ### Sequence file generation
+    ## Selecting sequences
+    #ranking (score, peakval or random)
+    score: peakval
+
+    # number of sequences to use
+    num_sequences: ''
+    # or
+    proportion: 0.10
+    min_sequences: 100
+
+    ## Sequence manipulations
+    max_size: 100000
+    halfwidth: 100
+    masker: dustmasker
+
+
+
+glam2:
+    # options for glam2: 100000 iterations (slow), motifs from 6 to 30, start at 20
+    options: -r 5 -n 100000 -a 6 -b 30 -w 20
+    # number of results to return for glam2scan
+    scan_results: 20000
+
+mast:
+    # evalue threshold for mast - set to large value
+    # to collect all results
+    evalue: 10000000
+
+    # options for mast
+    options: ''
+
+
+
+    ##########################################################
+    ##########################################################
+    ##########################################################
+    # options for tomtom
+    ##########################################################
+tomtom:
+    # maximum pvalue to filter MEME output using TOMTOM
+    filter_pvalue: 1e-05
+
+    # master motif to select motifs from MEME output using TOMTOM
+    databases: [/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/JASPAR/JASPAR_CORE_2016.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/JASPAR/JASPAR_CORE_REDUNDANT_2016.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/JASPAR/JASPAR_CORE_2016_vertebrates.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/JASPAR/JASPAR_CORE_REDUNDANT_2016_vertebrates.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/HUMAN/HOCOMOCOv10_HUMAN_mono_meme_format.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/CIS-BP/Homo_sapiens.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/EUKARYOTE/wei2010_human_mws.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/EUKARYOTE/wei2010_mouse_mws.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/EUKARYOTE/wei2010_mouse_pbm.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/MOUSE/HOCOMOCOv10_MOUSE_mono_meme_format.meme,/shared/sudlab1/General/apps/bio/meme_4.11.2/db/motif_databases/CIS-BP/Mus_musculus.meme]
+
+    # options for tomtom - defaults taken from tomtom web site
+    options: -min-overlap 5 -dist pearson -evalue -thresh 10
+
+
+
+    ################################################################
+    ################################################################
+    ################################################################
+    ## gat options
+    ################################################################
+gat:
+
+    # number of samples
+    num_samples: 10000
+
+    # mapability track to use
+    mapability: 100
+
+    # fdr to filter
+    fdr: 0.05
+
+    # minimum expected overlap for results to be reported
+    min_expected: 1000
+
+    # workspace to use for gat. If empty, the default
+    # is to use the ungapped genome as defined in the
+    # annotations pipeline
+    workspace: ''
+
+    ##############################################
+    ##############################################
+    ## read processing - filtering options
+    ##############################################
+filtering:
+
+    # minimum mapping quality
+    quality: 10
+
+    # whether or not to dedup
+    dedup: 1
+
+    # method to remove duplicatesu
+    dedup_method: picard
+
+    # insert-size
+    min_insert_size: 0
+
+    # maximum insert size
+    max_insert_size: 500
+
+    ################################################################
+geneset:
+    # geneset to use to compute binding profiles for - see
+    # pipeline_annotations ini file for definitions.
+    binding: annotations_interface_geneset_all_gtf
+
+    ################################################################
+report:
+    # number of threads to use to build the documentation
+    threads: 10
+
+    # directory for html documentation
+    html: report/html
+
+    # directory for doctrees
+    doctrees: report/doctrees
+
+    # prefix under which to publish report
+    prefix: default
+
+
+
+

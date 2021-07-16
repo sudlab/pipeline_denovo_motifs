@@ -175,9 +175,9 @@ from CGATCore import Experiment as E
 from CGATCore import Pipeline as P
 import CGATCore.IOTools as IOTools
 import CGAT.Bed as Bed
-import CGATPipelines.PipelinePeakcalling as PipelinePeakcalling
+import cgatpipelines.tasks.peakcalling as PipelinePeakcalling
 import PipelineDeNovoMotifs_python3 as PipelineMotifs
-import CGATPipelines.PipelineTracks as PipelineTracks
+import cgatpipelines.tasks.tracks as PipelineTracks
 
 
 ###################################################
